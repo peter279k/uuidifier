@@ -33,18 +33,22 @@ class Uuidifier
             throw new InvalidArgumentException('Can only encode integers');
         }
 
-        $hash = sha1($prefix . $id);
+        $hash = sha1(strtolower($prefix) . $id);
         $hex = dechex($id);
         $length = strlen($hex);
         $hash = substr($hash, 0, 32 - $length) . $hex;
 
         $timeHi = BinaryUtils::applyVersion(substr($hash, 12, 4), $this->version);
         $clockSeqHi = BinaryUtils::applyVariant(hexdec(substr($hash, 16, 2)));
+        $timeHiAndVersion = str_pad(dechex($timeHi), 4, '0', STR_PAD_LEFT);
+
+        // Calculate an additional checksum based on the type and the id for validation.
+        $checksum = md5(strtolower($prefix))[0] . ($id % 9);
 
         $fields = [
             'time_low' => substr($hash, 0, 8),
             'time_mid' => substr($hash, 8, 4),
-            'time_hi_and_version' => str_pad(dechex($timeHi), 4, '0', STR_PAD_LEFT),
+            'time_hi_and_version' => substr($timeHiAndVersion, 0, 2) . $checksum,
             'clock_seq_hi_and_reserved' => str_pad(dechex($clockSeqHi), 2, '0', STR_PAD_LEFT),
             'clock_seq_low' => dechex($length) . substr($hash, 19, 1),
             'node' => substr($hash, 20, 12),
@@ -78,8 +82,9 @@ class Uuidifier
     public function isValid($prefix, UuidInterface $uuid)
     {
         $decoded = $this->decode($uuid);
-        $encoded = $this->encode($prefix, $decoded);
+        $hex = $uuid->getTimeHiAndVersionHex();
+        $checksum = md5(strtolower($prefix))[0] . ($decoded % 9);
 
-        return $uuid->equals($encoded);
+        return $checksum == substr($hex, 2, 2);
     }
 }

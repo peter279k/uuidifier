@@ -1,16 +1,16 @@
 <?php
 
 use PHPUnit\Framework\TestCase;
+use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
 use Teamleader\Uuidifier\Uuidifier;
-use Ramsey\Uuid\Uuid;
 
 class UudifierTest extends TestCase
 {
     /**
      * @test
      */
-    public function itEncodesIds()
+    public function itEncodesValidIds()
     {
         $generator = new Uuidifier();
         $uuid = $generator->encode('foo', 1);
@@ -34,11 +34,14 @@ class UudifierTest extends TestCase
     /**
      * @test
      */
-    public function itEmbedsTheVersion()
+    public function itEmbedsTheVersionAndVariant()
     {
-        $generator = new Uuidifier(9);
-        $uuid = $generator->encode('foo', 1);
-        $this->assertEquals(9, $uuid->getVersion());
+        for ($version = 0; $version < 10; $version++) {
+            $generator = new Uuidifier($version);
+            $uuid = $generator->encode('foo', rand(0, 10000000));
+            $this->assertEquals($version, $uuid->getVersion());
+            $this->assertEquals(Uuid::RFC_4122, $uuid->getVariant());
+        }
     }
 
     /**
